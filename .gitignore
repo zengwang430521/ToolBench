@@ -1,3 +1,10 @@
+mykey.py
+cmd_test2.sh
+data_0830/
+reproduction_data/
+reproduction_data.zip
+work_dirs
+.idea
 data/
 data.zip
 *.DS_store
@@ -8,3 +15,11 @@ run.bash
 
 *.pyc
 **/__pycache__
+data_old
+**/retrieval_model
+**/results
+**/log_file.txt
+
+
+*.txt
+
