@@ -1,7 +1,7 @@
 import os
 from os.path import join, exists
 
-root_dir = 'data/toolenv/tools'
+root_dir = '../data/toolenv/tools'
 
 api_list = []
 for dirname in os.listdir(root_dir):

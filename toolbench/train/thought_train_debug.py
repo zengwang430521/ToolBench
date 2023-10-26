@@ -80,9 +80,9 @@ def safe_save_model_for_hf_trainer(trainer: transformers.Trainer, output_dir: st
 
 
 def preprocess(
-    sources,
-    tokenizer: transformers.PreTrainedTokenizer,
-    template: str="tool-llama"
+        sources,
+        tokenizer: transformers.PreTrainedTokenizer,
+        template: str = "tool-llama"
 ) -> Dict:
     conv = get_conversation_template(template)
     if template == "tool-llama":
@@ -90,60 +90,13 @@ def preprocess(
     elif template == "tool-llama-single-round" or template == "tool-llama-multi-rounds":
         roles = {"system": conv.roles[0], "user": conv.roles[1], "function": conv.roles[2], "assistant": conv.roles[3]}
 
-    # Apply prompt templates
-    num_assit = 0
-    num_thought = 0
-    num_give_up = 0
-    num_answer = 0
-    thoughts = []
-
     conversations = []
     for i, source in enumerate(sources):
         conv.messages = []
         for j, sentence in enumerate(source):
             role = roles[sentence["from"]]
             conv.append_message(role, sentence["value"])
-
-            # # find out how many thought
-            # if role == 'Assistant':
-            #     num_assit += 1
-            #     s = sentence["value"]
-            #     if not s.startswith('\nThought: \n'):
-            #         num_thought += 1
-            #         thought = s.split('Thought:')[1].split('Action')[0]
-            #         # print(thought)
-            #         thoughts.append(thought)
-            #
-            #     if 'give_up' in s:
-            #         num_give_up += 1
-            #         print(s)
-            #     if 'give_answer' in s.lower():
-            #         num_answer += 1
-            #         print(s)
-            #
-            #     print('{}, {}, {} / {}'.format(num_thought, num_answer, num_give_up, num_assit))
-
         conversations.append(conv.get_prompt())
-
-    # output_file = 'data/train_thoughts.txt'
-    # # output_file = 'data_0830/train_thoughts.txt'
-    # with open(output_file, 'w') as f:
-    #     for thought in thoughts:
-    #         f.write('='*30+'\n')
-    #         f.write(thought+'\n')
-    #         # f.write('='*30+'\n')
-    #
-    # output_file = 'data/train_conversation.txt'
-    # # output_file = 'data_0830/train_conversation.txt'
-    # with open(output_file, 'w') as f:
-    #     for conver in conversations:
-    #         # os.system('clear')
-    #         f.write('=================================================================================')
-    #         f.write('\n')
-    #         f.write(conver)
-    #         f.write('\n')
-
-    conversations = conversations[:20]
 
     '''Tokenize conversations'''
     input_ids = tokenizer(
@@ -154,7 +107,7 @@ def preprocess(
         truncation=True,
     ).input_ids
     targets = input_ids.clone()
-    
+
     # Mask targets. Only compute loss on the assistant outputs.
     sep = conv.sep + conv.roles[-1] + ": "
     for conversation, target in zip(conversations, targets):
@@ -168,7 +121,7 @@ def preprocess(
             turn_len = len(tokenizer(turn).input_ids)
 
             parts = turn.split(sep)
-            
+
             # only train on the last assistant reply, treat the history chat as instruction
             prefix = parts[:-1]
             instruction = ""
@@ -180,7 +133,7 @@ def preprocess(
             instruction_len = len(tokenizer(instruction).input_ids) - 2
 
             # Ignore the user instructions
-            target[cur_len : cur_len + instruction_len] = IGNORE_TOKEN_ID
+            target[cur_len: cur_len + instruction_len] = IGNORE_TOKEN_ID
             cur_len += turn_len
 
         target[cur_len:] = IGNORE_TOKEN_ID
@@ -190,9 +143,10 @@ def preprocess(
             z = torch.where(z == IGNORE_TOKEN_ID, tokenizer.unk_token_id, z)
             # rank0_print(tokenizer.decode(z))
             print(conversation)
-            print('--'*30)
+            print('--' * 30)
             print(tokenizer.decode(z))
-            print('=='*30+'\n'*2)
+            print('==' * 30 + '\n' * 2)
+
 
 
         if cur_len < tokenizer.model_max_length:
@@ -202,48 +156,102 @@ def preprocess(
                     f"WARNING: tokenization mismatch: {cur_len} vs. {total_len}."
                     f" (ignored)"
                 )
+
+    # Mask the tokens of thought
+    thought_mask = targets.new_zeros(size=targets.shape, dtype=torch.bool)
+    move_idxs_label = []
+    move_idxs_feature = []
+
+    prefix_for_thought = '\nThought:'
+    for i in range(input_ids.shape[0]):
+        cur_len = 0
+        conversation = conversations[i]
+        mask = thought_mask[i]
+        mask[:] = False
+
+        # 为了对齐没有thought之后的label。thought后的第一个词需要往前搬。
+        idxs_label = torch.arange(input_ids.shape[1])
+        idxs_feature = torch.arange(input_ids.shape[1])
+
+        parts = conversation.split(sep)
+        instruction = ""
+        for part in parts:
+            if part.startswith(prefix_for_thought):
+                thought = part.split('\nAction')[0]
+                instruction_len = len(tokenizer(instruction + prefix_for_thought).input_ids)
+                thought_len = len(tokenizer(instruction + thought).input_ids)
+                mask[cur_len + instruction_len:cur_len + thought_len] = True
+
+                idxs_label[cur_len + instruction_len:cur_len + instruction_len + 1] = min(cur_len + thought_len, input_ids.shape[1]-1)
+                idxs_feature[cur_len + instruction_len - 1:cur_len + instruction_len] = min(cur_len + thought_len - 1, input_ids.shape[1]-1)
+
+            instruction += part
+            instruction += sep
+        move_idxs_label.append(idxs_label)
+        move_idxs_feature.append(idxs_feature)
+        if False:  # Inspect and check the correctness of masking
+            print('\n' * 2 + '==' * 60)
+
+            # z = input_ids[i].clone()
+            # z = torch.where(mask, tokenizer.unk_token_id, z)
+            # print('without thought')
+            # print(tokenizer.decode(z).replace('<unk>', ''))
+            # print('--' * 60)
+            #
+            # z = input_ids[i].clone()
+            # z = torch.where(~mask, tokenizer.unk_token_id, z)
+            # print('only thought')
+            # print(tokenizer.decode(z).replace('<unk>', ''))
+            # print('--' * 60)
+
+
+            z = input_ids[i].clone()
+            z = torch.where(mask, tokenizer.unk_token_id, z)
+
+            z1 = tokenizer.decode(z)
+
+            z2 = z[idxs_label]
+            z2 = tokenizer.decode(z2)
+
+            z3 = z[idxs_feature]
+            z3 = tokenizer.decode(z3)
+
+        if cur_len < tokenizer.model_max_length:
+            if cur_len != total_len:
+                target[:] = IGNORE_TOKEN_ID
+                rank0_print(
+                    f"WARNING: tokenization mismatch: {cur_len} vs. {total_len}."
+                    f" (ignored)"
+                )
+    move_idxs_label = torch.stack(move_idxs_label, dim=0)
+    move_idxs_feature = torch.stack(move_idxs_feature, dim=0)
+
     return dict(
         input_ids=input_ids,
         labels=targets,
         attention_mask=input_ids.ne(tokenizer.pad_token_id),
+        thought_mask=thought_mask,
+        move_idxs_label=move_idxs_label,
+        move_idxs_feature=move_idxs_feature,
     )
 
-import re
+
+
+
 
 class SupervisedDataset(Dataset):
     """Dataset for supervised fine-tuning."""
-
     def __init__(self, raw_data, tokenizer: transformers.PreTrainedTokenizer, template="tool-llama"):
         super(SupervisedDataset, self).__init__()
-
-        # rank0_print("Formatting inputs...")
-        #
-        # inputs_ids, labels, attention_mask = []
-        # for api in raw_data:
-
-        source_dict = {}
-
-        num_double = 0
-        for example in raw_data:
-            id = example['id']
-            step = re.findall('Step .*:', id)[0]
-            query = id.split(step)[1].strip()
-            step = int(step.split('Step ')[1].split(':')[0])
-            if query not in source_dict.keys():
-                source_dict[query] = {}
-
-            if step in source_dict[query].keys():
-                print(f'double step:\nStep {step}\n{query}')
-                num_double += 1
-            source_dict[query][step] = example['conversations']
-        print(num_double)
-
         sources = [example["conversations"] for example in raw_data]
         self.template = template
         data_dict = preprocess(sources, tokenizer, self.template)
         self.input_ids = data_dict["input_ids"]
         self.labels = data_dict["labels"]
         self.attention_mask = data_dict["attention_mask"]
+        self.thought_mask = data_dict['thought_mask']
+        self.move_idxs_label = data_dict['move_idxs_label']
+        self.move_idxs_feature = data_dict['move_idxs_feature']
 
     def __len__(self):
         return len(self.input_ids)
@@ -253,6 +261,9 @@ class SupervisedDataset(Dataset):
             input_ids=self.input_ids[i],
             labels=self.labels[i],
             attention_mask=self.attention_mask[i],
+            thought_mask=self.thought_mask[i],
+            move_idxs_label=self.move_idxs_label[i],
+            move_idxs_feature=self.move_idxs_feature[i],
         )
 
 
@@ -281,6 +292,9 @@ class LazySupervisedDataset(Dataset):
             input_ids=ret["input_ids"][0],
             labels=ret["labels"][0],
             attention_mask=ret["attention_mask"][0],
+            thought_mask=ret["thought_mask"][0],
+            move_idxs_label=ret["move_idxs_label"][0],
+            move_idxs_feature=ret["move_idxs_feature"][0],
         )
         self.cached_data_dict[i] = ret
 
@@ -308,51 +322,15 @@ def make_supervised_data_module(
         train_raw_data = [raw_data[i] for i in train_indices]
         eval_raw_data = [raw_data[i] for i in eval_indices]
 
-    train_raw_data = train_raw_data[:10]
-    eval_raw_data = eval_raw_data[:10]
+    # import copy
+    # print('debug')
+    # train_raw_data = copy.deepcopy(train_raw_data[:10])
+    # eval_raw_data = copy.deepcopy(eval_raw_data[:10])
+
     rank0_print(f"#train {len(train_raw_data)}, #eval {len(eval_raw_data)}")
     train_dataset = dataset_cls(train_raw_data, tokenizer=tokenizer, template=data_args.conv_template)
     eval_dataset = dataset_cls(eval_raw_data, tokenizer=tokenizer, template=data_args.conv_template)
     return dict(train_dataset=train_dataset, eval_dataset=eval_dataset)
-
-
-def train():
-    global local_rank
-
-    parser = transformers.HfArgumentParser(
-        (ModelArguments, DataArguments, TrainingArguments)
-    )
-    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-    local_rank = training_args.local_rank
-    tokenizer = transformers.AutoTokenizer.from_pretrained(
-        model_args.model_name_or_path,
-        cache_dir=training_args.cache_dir,
-        model_max_length=training_args.model_max_length,
-        padding_side="right",
-        use_fast=False,
-    )
-    tokenizer.pad_token = tokenizer.unk_token
-
-    data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
-    world_size = int(os.environ.get("WORLD_SIZE", 1))
-    ddp = world_size != 1
-    device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)} if ddp else None
-    model = transformers.AutoModelForCausalLM.from_pretrained(
-        model_args.model_name_or_path,
-        cache_dir=training_args.cache_dir,
-        device_map=device_map
-    )
-    model.config.use_cache = False
-    trainer = Trainer(
-        model=model, tokenizer=tokenizer, args=training_args, **data_module
-    )
-
-    if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
-        trainer.train(resume_from_checkpoint=True)
-    else:
-        trainer.train()
-    trainer.save_state()
-    safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
 
 
 
@@ -375,7 +353,7 @@ def train_debug():
 
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
 
-    train_dataset = data_module['train_dataset']
+    # train_dataset = data_module['train_dataset']
     # for i in range(len(train_dataset)):
     #     data = train_dataset[i]
 
@@ -386,11 +364,11 @@ def train_debug():
     from transformers.models.llama.configuration_llama import LlamaConfig
     from transformers.models.llama.modeling_llama import LlamaForCausalLM
     cfg = LlamaConfig(
-        hidden_size=128,
-        intermediate_size=256,
+        hidden_size=64,
+        intermediate_size=128,
         max_position_embeddings=64,
         max_sequence_length=2048,
-        num_hidden_layers=8,
+        num_hidden_layers=2,
     )
     model = LlamaForCausalLM(cfg)
 
@@ -413,5 +391,4 @@ def train_debug():
     safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
 
 
-if __name__ == "__main__":
-    train()
+

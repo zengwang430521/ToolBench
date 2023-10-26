@@ -51,6 +51,6 @@ if __name__ == '__main__':
     t = 0
 
 
-with open('test_api_list.txt', 'w') as f:
+with open('../test_api_list.txt', 'w') as f:
     for apiname in api_list:
         f.write(apiname.lower()+'\n')
