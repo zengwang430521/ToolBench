@@ -1,3 +1,5 @@
+/mnt/lustre/share/git pull
+
 export PYTHONPATH=./
 
 srun -p pat_taurus --quotatype=auto --job-name=toolllama \

@@ -27,6 +27,8 @@ from transformers.trainer_pt_utils import LabelSmoother
 
 from toolbench.tool_conversation import SeparatorStyle
 from toolbench.model.model_adapter import get_conversation_template
+from toolbench.train.llama_condense_monkey_patch import replace_llama_with_condense
+
 
 IGNORE_TOKEN_ID = LabelSmoother.ignore_index
 torch.set_printoptions(profile="full")
@@ -54,10 +56,16 @@ class DataArguments:
 class TrainingArguments(transformers.TrainingArguments):
     cache_dir: Optional[str] = field(default=None)
     optim: str = field(default="adamw_torch")
-    model_max_length: int = field(
+    source_model_max_length: int = field(
         default=2048,
         metadata={
-            "help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."
+            "help": "Original maximum sequence length. Sequences will be right padded (and possibly truncated)."
+        },
+    )
+    model_max_length: int = field(
+        default=8192,
+        metadata={
+            "help": "Expanded maximum sequence length. Sequences will be right padded (and possibly truncated)."
         },
     )
 
@@ -238,7 +246,6 @@ def preprocess(
 
 
 
-
 class SupervisedDataset(Dataset):
     """Dataset for supervised fine-tuning."""
     def __init__(self, raw_data, tokenizer: transformers.PreTrainedTokenizer, template="tool-llama"):
@@ -334,12 +341,62 @@ def make_supervised_data_module(
 
 
 
+
+def train():
+    global local_rank
+
+    parser = transformers.HfArgumentParser(
+        (ModelArguments, DataArguments, TrainingArguments)
+    )
+    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+    if training_args.source_model_max_length < training_args.model_max_length:
+        condense_ratio = int(training_args.model_max_length/training_args.source_model_max_length)
+        # ratio = N means the sequence length is expanded by N, remember to change the model_max_length to 8192 (2048 * ratio) for ratio = 4
+        replace_llama_with_condense(ratio=condense_ratio)
+    local_rank = training_args.local_rank
+    tokenizer = transformers.AutoTokenizer.from_pretrained(
+        model_args.model_name_or_path,
+        cache_dir=training_args.cache_dir,
+        model_max_length=training_args.model_max_length,
+        padding_side="right",
+        use_fast=False,
+    )
+    tokenizer.pad_token = tokenizer.unk_token
+
+    data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
+    world_size = int(os.environ.get("WORLD_SIZE", 1))
+    ddp = world_size != 1
+    device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)} if ddp else None
+    model = transformers.AutoModelForCausalLM.from_pretrained(
+        model_args.model_name_or_path,
+        cache_dir=training_args.cache_dir,
+        device_map=device_map
+    )
+    model.config.use_cache = False
+    trainer = Trainer(
+        model=model, tokenizer=tokenizer, args=training_args, **data_module
+    )
+
+    if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
+        trainer.train(resume_from_checkpoint=True)
+    else:
+        trainer.train()
+    trainer.save_state()
+    safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
+
+
+
 def train_debug():
     global local_rank
 
     parser = transformers.HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments)
     )
+    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+    if training_args.source_model_max_length < training_args.model_max_length:
+        condense_ratio = int(training_args.model_max_length/training_args.source_model_max_length)
+        # ratio = N means the sequence length is expanded by N, remember to change the model_max_length to 8192 (2048 * ratio) for ratio = 4
+        replace_llama_with_condense(ratio=condense_ratio)
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     local_rank = training_args.local_rank
     tokenizer = transformers.AutoTokenizer.from_pretrained(
