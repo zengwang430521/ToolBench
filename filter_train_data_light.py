@@ -37,7 +37,12 @@ tar_file = '/home/SENSETIME/zengwang/myprojects/llm/ToolBench/data/toolllama_G12
 
 
 '''get the data without thought'''
-tar_file2 = '/home/SENSETIME/zengwang/myprojects/llm/ToolBench/data/toolllama_G123_dfs_train_light_wo_thought.json'
+# tar_file = '/home/SENSETIME/zengwang/myprojects/llm/ToolBench/data/toolllama_G123_dfs_train_light.json'
+# tar_file2 = '/home/SENSETIME/zengwang/myprojects/llm/ToolBench/data/toolllama_G123_dfs_train_light_wo_thought.json'
+
+tar_file = '/home/SENSETIME/zengwang/myprojects/llm/ToolBench/data/toolllama_G123_dfs_eval.json'
+tar_file2 = '/home/SENSETIME/zengwang/myprojects/llm/ToolBench/data/toolllama_G123_dfs_eval_wo_thought.json'
+
 out_data = json.load(open(tar_file, "r"))
 out_data2 = []
 

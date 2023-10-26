@@ -1,13 +1,16 @@
+/mnt/lustre/share/git pull
+
 export PYTHONPATH=./
+
 
 srun -p pat_taurus --quotatype=auto --job-name=toolllama \
    --ntasks=1 --gres=gpu:8 --ntasks-per-node=1 --cpus-per-task=40 --kill-on-bad-exit=1 \
    \
 torchrun --nproc_per_node=8 --master_port=20001 \
-    toolbench/train/thought_train_long_seq_debug.py \
-    --data_path  data/toolllama_G123_dfs_train_light.json \
-    --eval_data_path  data/toolllama_G123_dfs_eval.json \
-    --output_dir work_dirs/thought/split \
+    toolbench/train/train_mem.py \
+    --data_path  data/toolllama_G123_dfs_train_light_wo_thought.json \
+    --eval_data_path  data/toolllama_G123_dfs_eval_wo_thought.json \
+    --output_dir work_dirs/thought/wo_thought \
     \
     --model_name_or_path /mnt/lustre/zengwang/data/llama/huggyllama/llama-7b  \
     --conv_template tool-llama-single-round \
@@ -35,3 +38,13 @@ torchrun --nproc_per_node=8 --master_port=20001 \
     --report_to none
 
 
+    toolbench/train/train_mem.py \
+    --data_path  data/toolllama_G123_dfs_train_light.json \
+    --eval_data_path  data/toolllama_G123_dfs_eval.json \
+    --output_dir work_dirs/thought/baseline \
+
+
+    toolbench/train/thought_train_long_seq_debug.py \
+    --data_path  data/toolllama_G123_dfs_train_light.json \
+    --eval_data_path  data/toolllama_G123_dfs_eval.json \
+    --output_dir work_dirs/thought/split \
