@@ -237,6 +237,7 @@ def forward2(
     )
 
 
+@classmethod
 def _load_pretrained_model(
     cls,
     model,
