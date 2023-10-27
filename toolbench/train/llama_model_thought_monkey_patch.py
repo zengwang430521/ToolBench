@@ -545,7 +545,7 @@ def _load_pretrained_model(
                 '''model teacher'''
                 print('load teacher')
                 new_error_msgs, offload_index, state_dict_index = _load_state_dict_into_meta_model(
-                    model.model_teahcer,
+                    model.model_teacher,
                     state_dict,
                     loaded_keys,
                     start_prefix,

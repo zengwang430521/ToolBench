@@ -2,7 +2,7 @@
 
 
 
-srun -p pat_taurus --quotatype=spot --job-name=toolllama \
+srun -p pat_taurus --quotatype=auto --job-name=toolllama \
    --ntasks=1 --gres=gpu:8 --ntasks-per-node=1 --cpus-per-task=40 --kill-on-bad-exit=1 \
    \
 torchrun --nproc_per_node=8 --master_port=20001 \
