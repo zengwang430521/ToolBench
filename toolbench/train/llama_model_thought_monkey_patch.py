@@ -524,6 +524,12 @@ def _load_pretrained_model(
             )
 
             if low_cpu_mem_usage:
+                '''model teacher'''
+                print('load student')
+                print('start_prefix', start_prefix)
+                print(type(model))
+                print([state_dict.keys()][0])
+
                 new_error_msgs, offload_index, state_dict_index = _load_state_dict_into_meta_model(
                     model_to_load,
                     state_dict,

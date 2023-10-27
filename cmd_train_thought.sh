@@ -1,6 +1,7 @@
 /mnt/lustre/share/git pull
 
 
+   --ntasks=1 --gres=gpu:8 --ntasks-per-node=1 --cpus-per-task=40 --kill-on-bad-exit=1 \
 
 srun -p pat_taurus --quotatype=auto --job-name=toolllama \
    --ntasks=1 --gres=gpu:8 --ntasks-per-node=1 --cpus-per-task=40 --kill-on-bad-exit=1 \
