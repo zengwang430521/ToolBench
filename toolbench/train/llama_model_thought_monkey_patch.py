@@ -22,7 +22,7 @@ import os
 import re
 import shutil
 import tempfile
-import pdb
+# import pdb
 
 def __init__(self, config):
     super(LlamaForCausalLM, self).__init__(config)
@@ -255,14 +255,18 @@ def _load_pretrained_model2(
     load_in_8bit=False,
     keep_in_fp32_modules=None,
 ):
-    pdb.set_trace()
+    # pdb.set_trace()
 
-    print('state_dict')
-    print(state_dict)
-    print('pretrained_model_name_or_path')
-    print(pretrained_model_name_or_path)
-    print('loaded keys')
-    print(loaded_keys)
+    # print('state_dict')
+    # print(state_dict)
+    # print('pretrained_model_name_or_path')
+    # print(pretrained_model_name_or_path)
+    # print('loaded keys')
+    # print(loaded_keys)
+
+    '''不用调整model的key, 把loaded key, state_dict 更新就行'''
+    loaded_keys += [t.replace('model.', 'model_teacher.').replace('lm_head.', 'lm_head_teacher.') for t in loaded_keys]
+
 
     is_safetensors = False
     if load_in_8bit:
@@ -309,30 +313,28 @@ def _load_pretrained_model2(
 
     # key re-naming operations are never done on the keys
     # that are loaded, but always on the keys of the newly initialized model
-    remove_prefix_from_model = not has_prefix_module and expects_prefix_module
-    add_prefix_to_model = has_prefix_module and not expects_prefix_module
+    remove_prefix_from_model = not has_prefix_module and expects_prefix_module  # False
+    add_prefix_to_model = has_prefix_module and not expects_prefix_module       # False
 
     if remove_prefix_from_model:
-        # _prefix = f"{prefix}."
-        # expected_keys_not_prefixed = [s for s in expected_keys if not s.startswith(_prefix)]
-        # expected_keys = [s[len(_prefix) :] if s.startswith(_prefix) else s for s in expected_keys]
-
-        '''model_teacher'''
-        expected_keys_not_prefixed = []
-        expected_keys_new = []
-        prefix2 = 'model_teacher'
         _prefix = f"{prefix}."
-        _prefix2 = f"{prefix2}."
-        for s in expected_keys:
-            if s.startswith(_prefix):
-                expected_keys_new.append(s[len(_prefix):])
-            elif s.startswith(_prefix2):
-                expected_keys_new.append(s[len(_prefix2):])
-            else:
-                expected_keys.append(s)
-                expected_keys_not_prefixed.append(s)
-        expected_keys = expected_keys_new
-
+        expected_keys_not_prefixed = [s for s in expected_keys if not s.startswith(_prefix)]
+        expected_keys = [s[len(_prefix) :] if s.startswith(_prefix) else s for s in expected_keys]
+        # '''model_teacher'''
+        # expected_keys_not_prefixed = []
+        # expected_keys_new = []
+        # prefix2 = 'model_teacher'
+        # _prefix = f"{prefix}."
+        # _prefix2 = f"{prefix2}."
+        # for s in expected_keys:
+        #     if s.startswith(_prefix):
+        #         expected_keys_new.append(s[len(_prefix):])
+        #     elif s.startswith(_prefix2):
+        #         expected_keys_new.append(s[len(_prefix2):])
+        #     else:
+        #         expected_keys.append(s)
+        #         expected_keys_not_prefixed.append(s)
+        # expected_keys = expected_keys_new
     elif add_prefix_to_model:
         expected_keys = [".".join([prefix, s]) for s in expected_keys]
 
@@ -486,9 +488,9 @@ def _load_pretrained_model2(
         error_msgs = _load_state_dict_into_model(model_to_load, state_dict, start_prefix)
         offload_index = None
 
-        '''model teacher'''
-        print('load teacher model')
-        error_msgs += _load_state_dict_into_model(model.model_teacher, state_dict, start_prefix)
+        # '''model teacher'''
+        # print('load teacher model')
+        # error_msgs += _load_state_dict_into_model(model.model_teacher, state_dict, start_prefix)
 
     else:
         # Sharded checkpoint or whole but low_cpu_mem_usage==True
@@ -522,6 +524,11 @@ def _load_pretrained_model2(
                 continue
             state_dict = load_state_dict(shard_file)
 
+            '''在这里复制key'''
+            for key in list(state_dict.keys()):
+                key_new = key.replace('model.', 'model_teacher.').replace('lm_head.', 'lm_head_teacher.')
+                state_dict[key_new] = state_dict[key]
+
             # Mistmatched keys contains tuples key/shape1/shape2 of weights in the checkpoint that have a shape not
             # matching the weights in the model.
             mismatched_keys += _find_mismatched_keys(
@@ -534,12 +541,12 @@ def _load_pretrained_model2(
             )
 
             if low_cpu_mem_usage:
-                '''model teacher'''
-                print('load student')
-                print('start_prefix', start_prefix)
-                print(type(model))
-                print(type(model_to_load))
-                print(list(state_dict.keys())[0])
+                # '''model teacher'''
+                # print('load student')
+                # print('start_prefix', start_prefix)
+                # print(type(model))
+                # print(type(model_to_load))
+                # print(list(state_dict.keys())[0])
 
                 new_error_msgs, offload_index, state_dict_index = _load_state_dict_into_meta_model(
                     model_to_load,
@@ -559,42 +566,42 @@ def _load_pretrained_model2(
                 )
                 error_msgs += new_error_msgs
 
-                '''model teacher'''
-                print('load teacher')
-                print('start_prefix', start_prefix)
-                state_dict_new = {}
-                for key in state_dict:
-                    key_new = key[len('model.'):]
-                    state_dict_new[key_new] = state_dict[key]
-
-                print(type(model))
-                print(list(state_dict_new.keys())[0])
-                print(list(model.model_teacher.state_dict().keys())[0])
-
-                new_error_msgs, offload_index, state_dict_index = _load_state_dict_into_meta_model(
-                    model.model_teacher,
-                    state_dict_new,
-                    # loaded_keys,
-                    [],
-                    start_prefix,
-                    expected_keys,
-                    device_map=device_map,
-                    offload_folder=offload_folder,
-                    offload_index=offload_index,
-                    state_dict_folder=state_dict_folder,
-                    state_dict_index=state_dict_index,
-                    dtype=dtype,
-                    load_in_8bit=load_in_8bit,
-                    is_safetensors=is_safetensors,
-                    keep_in_fp32_modules=keep_in_fp32_modules,
-                )
-                error_msgs += new_error_msgs
+                # '''model teacher'''
+                # print('load teacher')
+                # print('start_prefix', start_prefix)
+                # state_dict_new = {}
+                # for key in state_dict:
+                #     key_new = key[len('model.'):]
+                #     state_dict_new[key_new] = state_dict[key]
+                #
+                # print(type(model))
+                # print(list(state_dict_new.keys())[0])
+                # print(list(model.model_teacher.state_dict().keys())[0])
+                #
+                # new_error_msgs, offload_index, state_dict_index = _load_state_dict_into_meta_model(
+                #     model.model_teacher,
+                #     state_dict_new,
+                #     # loaded_keys,
+                #     [],
+                #     start_prefix,
+                #     expected_keys,
+                #     device_map=device_map,
+                #     offload_folder=offload_folder,
+                #     offload_index=offload_index,
+                #     state_dict_folder=state_dict_folder,
+                #     state_dict_index=state_dict_index,
+                #     dtype=dtype,
+                #     load_in_8bit=load_in_8bit,
+                #     is_safetensors=is_safetensors,
+                #     keep_in_fp32_modules=keep_in_fp32_modules,
+                # )
+                # error_msgs += new_error_msgs
 
             else:
                 error_msgs += _load_state_dict_into_model(model_to_load, state_dict, start_prefix)
-                '''model teacher'''
-                print('load teacher')
-                error_msgs += _load_state_dict_into_model(model.model_teacher, state_dict, start_prefix)
+                # '''model teacher'''
+                # print('load teacher')
+                # error_msgs += _load_state_dict_into_model(model.model_teacher, state_dict, start_prefix)
 
             # force memory release
             del state_dict
@@ -1313,7 +1320,7 @@ def from_pretrained2(cls, pretrained_model_name_or_path: Optional[Union[str, os.
         )
 
     # load pt weights early so that we know which dtype to init the model under
-    pdb.set_trace()
+    # pdb.set_trace()
     if from_pt:
         if not is_sharded and state_dict is None:
             # Time to load the checkpoint
