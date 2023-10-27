@@ -1,4 +1,8 @@
+
 /mnt/lustre/share/git pull
+
+ssh -N -f -L 6000:10.142.4.31:20 -p 20 zengwang@jump-bj.sensetime.com -o TCPKeepAlive=yes
+
 
 
    --ntasks=1 --gres=gpu:8 --ntasks-per-node=1 --cpus-per-task=40 --kill-on-bad-exit=1 \

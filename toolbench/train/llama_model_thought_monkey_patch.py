@@ -116,10 +116,10 @@ def forward2(
     )
     return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-
     '''
     student model, causal mask + mask out thought tokens
     '''
+
     B, L = input_ids.shape
     # attn_mask_student = torch.ones(L, L, dtype=torch.bool).tril(diagonal=0) # causal
     attn_mask_student = input_ids.new_ones(L, L, dtype=torch.bool).tril(diagonal=0) # causal
@@ -257,7 +257,7 @@ def _load_pretrained_model(
     keep_in_fp32_modules=None,
 ):
     print('state_dict')
-    print(list(state_dict.keys()))
+    print(state_dict)
     print('pretrained_model_name_or_path')
     print(pretrained_model_name_or_path)
     print('loaded keys')
