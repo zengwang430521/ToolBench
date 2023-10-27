@@ -5,12 +5,10 @@ ssh -N -f -L 6000:10.142.4.31:20 -p 20 zengwang@jump-bj.sensetime.com -o TCPKeep
 
 
 
-   --ntasks=1 --gres=gpu:8 --ntasks-per-node=1 --cpus-per-task=40 --kill-on-bad-exit=1 \
-
 srun -p pat_taurus --quotatype=auto --job-name=toolllama \
-   --ntasks=1 --gres=gpu:2 --ntasks-per-node=1 --cpus-per-task=10 --kill-on-bad-exit=1 \
+   --ntasks=1 --gres=gpu:8 --ntasks-per-node=1 --cpus-per-task=40 --kill-on-bad-exit=1 \
    \
-torchrun --nproc_per_node=2 --master_port=20001 \
+torchrun --nproc_per_node=8 --master_port=20001 \
     toolbench/train/thought_train_long_seq_debug.py \
     --data_path  data/toolllama_G123_dfs_train_light.json \
     --eval_data_path  data/toolllama_G123_dfs_eval.json \

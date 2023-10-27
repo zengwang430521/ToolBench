@@ -24,6 +24,6 @@ from toolbench.train.thought_train_debug import train_debug, train
 
 
 if __name__ == "__main__":
-   train_debug()
-   # train()
+   # train_debug()
+   train()
 
