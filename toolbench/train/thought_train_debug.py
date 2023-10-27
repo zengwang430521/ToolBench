@@ -399,6 +399,18 @@ def train_debug():
         replace_llama_with_condense(ratio=condense_ratio)
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     local_rank = training_args.local_rank
+
+    print('debug')
+    world_size = int(os.environ.get("WORLD_SIZE", 1))
+    ddp = world_size != 1
+    device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)} if ddp else None
+    model = transformers.AutoModelForCausalLM.from_pretrained(
+        model_args.model_name_or_path,
+        cache_dir=training_args.cache_dir,
+        device_map=device_map
+    )
+
+
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
         cache_dir=training_args.cache_dir,
@@ -407,6 +419,9 @@ def train_debug():
         use_fast=False,
     )
     tokenizer.pad_token = tokenizer.unk_token
+
+
+
 
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
 
