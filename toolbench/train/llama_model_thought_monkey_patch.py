@@ -406,9 +406,9 @@ def _load_pretrained_model2(
     # Make sure we are able to load base models as well as derived models (with heads)
     start_prefix = ""
     model_to_load = model
-    print(len(cls.base_model_prefix))
-    print(hasattr(model, cls.base_model_prefix))
-    print(has_prefix_module)
+    # print(len(cls.base_model_prefix))
+    # print(hasattr(model, cls.base_model_prefix))
+    # print(has_prefix_module)
 
     if len(cls.base_model_prefix) > 0 and not hasattr(model, cls.base_model_prefix) and has_prefix_module:
         start_prefix = cls.base_model_prefix + "."
