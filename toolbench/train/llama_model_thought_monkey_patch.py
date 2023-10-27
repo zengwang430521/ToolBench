@@ -256,7 +256,8 @@ def _load_pretrained_model(
     load_in_8bit=False,
     keep_in_fp32_modules=None,
 ):
-    print('loaded keys', loaded_keys)
+    print('loaded keys')
+    print(loaded_keys)
 
     is_safetensors = False
     if load_in_8bit:
