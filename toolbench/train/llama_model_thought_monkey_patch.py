@@ -22,7 +22,7 @@ import os
 import re
 import shutil
 import tempfile
-# import pdb
+import pdb
 
 def __init__(self, config):
     super(LlamaForCausalLM, self).__init__(config)
@@ -255,7 +255,7 @@ def _load_pretrained_model2(
     load_in_8bit=False,
     keep_in_fp32_modules=None,
 ):
-    # pdb.set_trace()
+    pdb.set_trace()
 
     # print('state_dict')
     # print(state_dict)
