@@ -256,6 +256,10 @@ def _load_pretrained_model(
     load_in_8bit=False,
     keep_in_fp32_modules=None,
 ):
+    print('state_dict')
+    print(list(state_dict.keys()))
+    print('pretrained_model_name_or_path')
+    print(pretrained_model_name_or_path)
     print('loaded keys')
     print(loaded_keys)
 
