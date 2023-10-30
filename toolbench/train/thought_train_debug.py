@@ -98,6 +98,7 @@ def preprocess(
     elif template == "tool-llama-single-round" or template == "tool-llama-multi-rounds":
         roles = {"system": conv.roles[0], "user": conv.roles[1], "function": conv.roles[2], "assistant": conv.roles[3]}
 
+    # Apply prompt templates
     conversations = []
     for i, source in enumerate(sources):
         conv.messages = []
@@ -106,7 +107,7 @@ def preprocess(
             conv.append_message(role, sentence["value"])
         conversations.append(conv.get_prompt())
 
-    '''Tokenize conversations'''
+    # Tokenize conversations
     input_ids = tokenizer(
         conversations,
         return_tensors="pt",
@@ -150,12 +151,7 @@ def preprocess(
             z = target.clone()
             z = torch.where(z == IGNORE_TOKEN_ID, tokenizer.unk_token_id, z)
             # rank0_print(tokenizer.decode(z))
-            print(conversation)
-            print('--' * 30)
             print(tokenizer.decode(z))
-            print('==' * 30 + '\n' * 2)
-
-
 
         if cur_len < tokenizer.model_max_length:
             if cur_len != total_len:
@@ -164,6 +160,7 @@ def preprocess(
                     f"WARNING: tokenization mismatch: {cur_len} vs. {total_len}."
                     f" (ignored)"
                 )
+
 
     # Mask the tokens of thought
     thought_mask = targets.new_zeros(size=targets.shape, dtype=torch.bool)
@@ -224,13 +221,6 @@ def preprocess(
             z3 = z[idxs_feature]
             z3 = tokenizer.decode(z3)
 
-        if cur_len < tokenizer.model_max_length:
-            if cur_len != total_len:
-                target[:] = IGNORE_TOKEN_ID
-                rank0_print(
-                    f"WARNING: tokenization mismatch: {cur_len} vs. {total_len}."
-                    f" (ignored)"
-                )
     move_idxs_label = torch.stack(move_idxs_label, dim=0)
     move_idxs_feature = torch.stack(move_idxs_feature, dim=0)
 
@@ -400,15 +390,15 @@ def train_debug():
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     local_rank = training_args.local_rank
 
-    print('debug')
-    world_size = int(os.environ.get("WORLD_SIZE", 1))
-    ddp = world_size != 1
-    device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)} if ddp else None
-    model = transformers.AutoModelForCausalLM.from_pretrained(
-        model_args.model_name_or_path,
-        cache_dir=training_args.cache_dir,
-        device_map=device_map
-    )
+    # print('debug')
+    # world_size = int(os.environ.get("WORLD_SIZE", 1))
+    # ddp = world_size != 1
+    # device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)} if ddp else None
+    # model = transformers.AutoModelForCausalLM.from_pretrained(
+    #     model_args.model_name_or_path,
+    #     cache_dir=training_args.cache_dir,
+    #     device_map=device_map
+    # )
 
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(
@@ -425,9 +415,9 @@ def train_debug():
 
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
 
-    # train_dataset = data_module['train_dataset']
-    # for i in range(len(train_dataset)):
-    #     data = train_dataset[i]
+    train_dataset = data_module['train_dataset']
+    for i in range(len(train_dataset)):
+        data = train_dataset[i]
 
     world_size = int(os.environ.get("WORLD_SIZE", 1))
     ddp = world_size != 1

@@ -1,9 +1,12 @@
+export PYTHONPATH=./
+
 srun -p pat_taurus --quotatype=auto --job-name=toolllama \
-   --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=4 --kill-on-bad-exit=1 \
+    --ntasks=1 --gres=gpu:2 --ntasks-per-node=1 --cpus-per-task=4 --kill-on-bad-exit=1 \
    \
-    python -m pdb toolbench/train/thought_train_long_seq_debug.py \
+torchrun --nproc_per_node=2 --master_port=20001 \
+    toolbench/train/thought_train_long_seq_debug.py \
     --data_path  data/toolllama_G123_dfs_train_light.json \
-    --eval_data_path  data/toolllama_G123_dfs_eval.json \
+    --eval_data_path  data/toolllama_G123_dfs_eval_wo_thought.json \
     --output_dir work_dirs/thought/split \
     \
     --model_name_or_path /mnt/lustre/zengwang/data/llama/huggyllama/llama-7b  \
@@ -30,6 +33,11 @@ srun -p pat_taurus --quotatype=auto --job-name=toolllama \
     --gradient_checkpointing True \
     --lazy_preprocess True \
     --report_to none
+
+
+
+
+
 
 export PYTHONPATH=./
 python toolbench/train/thought_train_long_seq_debug.py \
