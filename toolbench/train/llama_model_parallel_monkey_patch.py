@@ -57,6 +57,7 @@ def forward2(
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
 ) -> Union[Tuple, BaseModelOutputWithPast]:
+
     if not hasattr(self, 'model_parallel'):
         device1 = self.embed_tokens.weight.device
         if device1 == torch.device('cuda:0'):

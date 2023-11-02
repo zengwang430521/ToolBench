@@ -6,7 +6,7 @@ ssh -N -f -L 6000:10.142.4.31:20 -p 20 zengwang@jump-bj.sensetime.com -o TCPKeep
 
 export PYTHONPATH=./
 
-srun -p pat_taurus --quotatype=spot --job-name=toolllama \
+srun -p pat_taurus --job-name=toolllama \
    --ntasks=1 --gres=gpu:8 --ntasks-per-node=1 --cpus-per-task=40 --kill-on-bad-exit=1 \
    \
 torchrun --nproc_per_node=8 --master_port=20001 \
@@ -35,7 +35,7 @@ torchrun --nproc_per_node=8 --master_port=20001 \
     --fsdp_transformer_layer_cls_to_wrap 'LlamaDecoderLayer' \
     --tf32 True \
     --source_model_max_length 2048 \
-    --model_max_length 8192 \
+    --model_max_length 6144 \
     --gradient_checkpointing True \
     --lazy_preprocess True \
     --report_to none
