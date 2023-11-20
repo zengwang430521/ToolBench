@@ -158,7 +158,6 @@ def forward2(
     logits = self.lm_head(hidden_states)
 
     # print('student')
-
     loss = 0
     if labels is not None:
         # Shift so that tokens < n predict n
@@ -196,7 +195,6 @@ def forward2(
     logits_teacher = self.lm_head_teacher(hidden_states_teacher)
 
     # print('teacher')
-
     if labels is not None:
         # Shift so that tokens < n predict n
         shift_logits = logits_teacher[..., :-1, :].contiguous()
