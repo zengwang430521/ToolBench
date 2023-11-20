@@ -17,7 +17,7 @@ torchrun --nproc_per_node=2 --master_port=20001 \
     toolbench/train/thought_train_long_seq_debug.py \
     --data_path  data/toolllama_G123_dfs_train_light.json \
     --eval_data_path  data/toolllama_G123_dfs_eval_wo_thought.json \
-    --output_dir work_dirs/thought/split \
+    --output_dir work_dirs/debug \
     \
     --model_name_or_path /mnt/lustre/zengwang/data/llama/huggyllama/llama-7b  \
     --conv_template tool-llama-single-round \
