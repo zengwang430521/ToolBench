@@ -13,7 +13,7 @@ torchrun --nproc_per_node=8 --master_port=20001 \
     toolbench/train/thought_train_long_seq_debug.py \
     --data_path  data/toolllama_G123_dfs_train_light.json \
     --eval_data_path  data/toolllama_G123_dfs_eval_wo_thought.json \
-    --output_dir work_dirs/thought/split \
+    --output_dir work_dirs/thought/split_wo_distillation \
     \
     --model_name_or_path /mnt/lustre/zengwang/data/llama/huggyllama/llama-7b  \
     --conv_template tool-llama-single-round \
@@ -21,7 +21,7 @@ torchrun --nproc_per_node=8 --master_port=20001 \
     --num_train_epochs 2 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
-    --gradient_accumulation_steps 4 \
+    --gradient_accumulation_steps 16 \
     --evaluation_strategy "epoch" \
     --prediction_loss_only \
     --save_strategy "epoch" \
@@ -30,12 +30,12 @@ torchrun --nproc_per_node=8 --master_port=20001 \
     --weight_decay 0. \
     --warmup_ratio 0.04 \
     --lr_scheduler_type "cosine" \
-    --logging_steps 1 \
+    --logging_steps 1 \ 
     --fsdp "full_shard auto_wrap" \
     --fsdp_transformer_layer_cls_to_wrap 'LlamaDecoderLayer' \
     --tf32 True \
     --source_model_max_length 2048 \
-    --model_max_length 6144 \
+    --model_max_length 8192 \
     --gradient_checkpointing True \
     --lazy_preprocess True \
     --report_to none

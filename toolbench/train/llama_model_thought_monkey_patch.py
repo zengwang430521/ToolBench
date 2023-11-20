@@ -211,13 +211,13 @@ def forward2(
         loss = loss + loss_teacher
 
     '''distillation loss'''
-    # print('distillation')
-    loss_dist = 0
-    for x_s, x_t in zip(hidden_features, hidden_features_teacher):
-        # loss_dist += loss_distillation_feature(x_s, x_t, move_idxs_feature, thought_mask, labels)
-        loss_dist += loss_distillation_simple(x_s, x_t, thought_mask, labels) * self.lambda_dist
-
-    loss = loss +  loss_dist
+    # # print('distillation')
+    # loss_dist = 0
+    # for x_s, x_t in zip(hidden_features, hidden_features_teacher):
+    #     # loss_dist += loss_distillation_feature(x_s, x_t, move_idxs_feature, thought_mask, labels)
+    #     loss_dist += loss_distillation_simple(x_s, x_t, thought_mask, labels) * self.lambda_dist
+    #
+    # loss = loss + loss_dist
 
     if not return_dict:
         output = (logits,) + outputs[1:]

@@ -1,4 +1,14 @@
 export PYTHONPATH=./
+python toolbench/inference/toolbench_server_mine.py --tool_root_dir=data/toolenv/tools/ --corpus_tsv_path=data/retrieval/G1/corpus.tsv --retrieval_model_path=/path/to/your/retrival_model --retrieved_api_nums=5 --backbone_model=toolllama --model_path=huggyllama/llama-7b --max_observation_length=1024 --method=DFS_woFilter_w2 --input_query_file=data/test_instruction/G1_instruction.json --output_answer_file=toolllama_lora_dfs_open_domain_result --rapidapi_key=000
+
+# INTERNIMAGE
+srun -p pat_earth --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=1 python setup.py build install --user
+srun -p pat_earth --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=1 pip install mmcv-full==1.5.0
+python test.py
+GPUS=4 GPUS_PER_NODE=4 sh slurm_test.sh pat_earth test configs/coco/cascade_internimage_xl_fpn_3x_coco2.py /mnt/lustre/zengwang/downloads/cascade_internimage_xl_fpn_3x_coco.pth --eval bbox segm
+GPUS=1 GPUS_PER_NODE=1 sh slurm_test.sh pat_earth test configs/coco/cascade_internimage_xl_fpn_3x_coco.py cascade_internimage_xl_fpn_3x_coco.pth --eval bbox segm
+
+
 
 srun -p pat_taurus --quotatype=auto --job-name=toolllama \
     --ntasks=1 --gres=gpu:2 --ntasks-per-node=1 --cpus-per-task=4 --kill-on-bad-exit=1 \
